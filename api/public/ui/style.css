@@ -23,7 +23,10 @@ pre{white-space:pre-wrap;word-break:break-word;background:#282c34;color:#abb2bf;
 /* supplier/admin styles */
 .supplier-controls, .admin-tab-controls{margin-bottom:12px}
 #supplierCatalog table, #adminContent table{width:100%;border-collapse:collapse;margin-top:8px}
-#supplierCatalog th,#supplierCatalog td,#adminContent th,#adminContent td{padding:8px;border:1px solid #444;text-align:left}
+
+/* auth forms */
+#loginForm, #registerForm{max-width:300px}
+#authBlock, #regBlock{background:#3a3f47;padding:12px;border-radius:8px;margin-bottom:12px}#supplierCatalog th,#supplierCatalog td,#adminContent th,#adminContent td{padding:8px;border:1px solid #444;text-align:left}
 #supplierCatalog tr:nth-child(even),#adminContent tr:nth-child(even){background:#3a3f47}
 button.small{padding:4px 8px;font-size:0.85em}
 .pagination{margin-top:12px;display:flex;align-items:center;gap:8px}

@@ -98,6 +98,86 @@
   // run initial
   callEndpoint(lastEndpoint);
 
+  // check session on load
+  async function checkSession(){
+    const res = await fetch('/me',{credentials:'include'});
+    if(res.ok){
+      const me = await res.json();
+      sessionSupplier = me;
+      loggedInState();
+    }
+  }
+  checkSession();
+
+  // authentication helpers
+  const loginForm = document.getElementById('loginForm');
+  const registerForm = document.getElementById('registerForm');
+  const showRegisterBtn = document.getElementById('showRegisterBtn');
+  const cancelRegister = document.getElementById('cancelRegister');
+  const authBlock = document.getElementById('authBlock');
+  const regBlock = document.getElementById('regBlock');
+  const loggedControls = document.getElementById('loggedControls');
+  const loggedName = document.getElementById('loggedName');
+  const logoutBtn = document.getElementById('logoutBtn');
+
+  loginForm.addEventListener('submit', async e=>{
+    e.preventDefault();
+    const data = Object.fromEntries(new FormData(loginForm));
+    const res = await fetch('/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data),credentials:'include'});
+    if(res.ok){
+      sessionSupplier = await res.json();
+      loggedInState();
+    } else {
+      alert('Login fallito');
+    }
+  });
+  showRegisterBtn.addEventListener('click',()=>{
+    authBlock.classList.add('hidden');
+    regBlock.classList.remove('hidden');
+  });
+  cancelRegister.addEventListener('click',()=>{
+    regBlock.classList.add('hidden');
+    authBlock.classList.remove('hidden');
+  });
+  registerForm.addEventListener('submit', async e=>{
+    e.preventDefault();
+    const data = Object.fromEntries(new FormData(registerForm));
+    const res = await fetch('/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data),credentials:'include'});
+    if(res.ok){
+      sessionSupplier = await res.json();
+      loggedInState();
+    } else {
+      alert('Registrazione fallita');
+    }
+  });
+  logoutBtn.addEventListener('click', async ()=>{
+    await fetch('/logout',{method:'POST',credentials:'include'});
+    sessionSupplier = null;
+    loggedOutState();
+  });
+
+  function loggedInState(){
+    authBlock.classList.add('hidden');
+    regBlock.classList.add('hidden');
+    loggedControls.classList.remove('hidden');
+    loggedName.textContent = sessionSupplier.fnome;
+    // set current supplier to self
+    currentSupplier = sessionSupplier.fid;
+    supplierSelect.value = currentSupplier;
+    loadSuppliers();
+    renderSupplierCatalog();
+  }
+  function loggedOutState(){
+    authBlock.classList.remove('hidden');
+    regBlock.classList.add('hidden');
+    loggedControls.classList.add('hidden');
+    currentSupplier = null;
+    supplierSelect.disabled = false;
+    supplierSelect.value = '';
+    supplierCatalog.innerHTML='';
+    loadSuppliers();
+  }
+
   // tab management
   const tabButtons = document.querySelectorAll('header .tabs button');
   const querySection = document.getElementById('querySection');
@@ -111,6 +191,9 @@
     supplierSection.classList.toggle('hidden', tab!=='supplier');
     adminSection.classList.toggle('hidden', tab!=='admin');
   }));
+
+  // authentication state
+  let sessionSupplier = null;
 
   // supplier management
   let currentSupplier = null;
@@ -126,7 +209,7 @@
   const formDialog = document.getElementById('formDialog');
 
   async function loadSuppliers(page=1){
-    const res = await fetch(`/suppliers?page=${page}&per_page=${supPer}`);
+    const res = await fetch(`/suppliers?page=${page}&per_page=${supPer}`,{credentials:'include'});
     const json = await res.json();
     supplierSelect.innerHTML = '<option value="">-- seleziona fornitore --</option>';
     json.data.forEach(s=>{
@@ -135,6 +218,12 @@
       opt.textContent = s.fnome;
       supplierSelect.appendChild(opt);
     });
+    if(sessionSupplier){
+      supplierSelect.value = sessionSupplier.fid;
+      supplierSelect.disabled = true;
+    } else {
+      supplierSelect.disabled = false;
+    }
     // pagination not implemented for supplier list in UI yet
   }
 
@@ -159,7 +248,7 @@
   async function renderSupplierCatalog(){
     if (!currentSupplier){ supplierCatalog.innerHTML=''; addCatalogItemBtn.classList.add('hidden'); return; }
     addCatalogItemBtn.classList.remove('hidden');
-    const res = await fetch(`/suppliers/${currentSupplier}/catalog?page=${supPage}&per_page=${supPer}`);
+    const res = await fetch(`/suppliers/${currentSupplier}/catalog?page=${supPage}&per_page=${supPer}`,{credentials:'include'});
     const json = await res.json();
     const table = document.createElement('table');
     table.innerHTML = `<thead><tr><th>PID</th><th>Nome</th><th>Colore</th><th>Costo</th><th>Azioni</th></tr></thead>`;
@@ -170,11 +259,15 @@
       const actions = document.createElement('td');
       const viewBtn = document.createElement('button'); viewBtn.textContent='Dettagli'; viewBtn.className='small';
       viewBtn.addEventListener('click',()=>showDetail(`/suppliers/${currentSupplier}/catalog/${item.pid}`));
-      const editBtn = document.createElement('button'); editBtn.textContent='Modifica'; editBtn.className='small';
-      editBtn.addEventListener('click',()=>showFormDialog('edit',item));
-      const delBtn = document.createElement('button'); delBtn.textContent='Elimina'; delBtn.className='small';
-      delBtn.addEventListener('click',()=>deleteCatalogItem(item.pid));
-      actions.append(viewBtn,editBtn,delBtn);
+      actions.append(viewBtn);
+      // allow edit/delete only if logged in as this supplier
+      if(sessionSupplier && sessionSupplier.fid === currentSupplier){
+        const editBtn = document.createElement('button'); editBtn.textContent='Modifica'; editBtn.className='small';
+        editBtn.addEventListener('click',()=>showFormDialog('edit',item));
+        const delBtn = document.createElement('button'); delBtn.textContent='Elimina'; delBtn.className='small';
+        delBtn.addEventListener('click',()=>deleteCatalogItem(item.pid));
+        actions.append(editBtn,delBtn);
+      }
       tr.appendChild(actions);
       tbody.appendChild(tr);
     });
@@ -189,7 +282,7 @@
   async function deleteCatalogItem(pid){
     if (!currentSupplier) return;
     if(!confirm('Elimina pezzo dal catalogo?'))return;
-    await fetch(`/suppliers/${currentSupplier}/catalog/${pid}`,{method:'DELETE'});
+    await fetch(`/suppliers/${currentSupplier}/catalog/${pid}`,{method:'DELETE',credentials:'include'});
     renderSupplierCatalog();
   }
 
@@ -217,7 +310,7 @@
       const data = Object.fromEntries(new FormData(form));
       const url = `/suppliers/${currentSupplier}/catalog` + (mode==='edit'?`/${item.pid}`:'');
       const method = mode==='edit'?'PUT':'POST';
-      await fetch(url,{method,headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
+      await fetch(url,{method,headers:{'Content-Type':'application/json'},body:JSON.stringify(data),credentials:'include'});
       formDialog.close();
       renderSupplierCatalog();
     });
@@ -246,7 +339,7 @@
 
   async function loadAdminPage(){
     let url = '/' + (adminType==='suppliers'?'suppliers':'pieces') + `?page=${adminPage}&per_page=10`;
-    const res = await fetch(url);
+    const res = await fetch(url,{credentials:'include'});
     const json = await res.json();
     const table = document.createElement('table');
     let headers = [];

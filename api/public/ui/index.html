@@ -45,10 +45,34 @@
       </section>
     </section>
 
-    <!-- supplier manager -->
+    <!-- supplier manager / login -->
     <section id="supplierSection" class="hidden">
       <h2>Gestione Fornitore</h2>
-      <div class="supplier-controls">
+      <div id="authBlock">
+        <h3>Login</h3>
+        <form id="loginForm" class="dialog-form">
+          <label>Username: <input name="username"></label>
+          <label>Password: <input type="password" name="password"></label>
+          <button type="submit">Login</button>
+        </form>
+        <p>Oppure <button id="showRegisterBtn" class="small">Registrati</button></p>
+      </div>
+      <div id="regBlock" class="hidden">
+        <h3>Registrazione</h3>
+        <form id="registerForm" class="dialog-form">
+          <label>Nome fornitore: <input name="fnome"></label>
+          <label>Indirizzo: <input name="indirizzo"></label>
+          <label>Username: <input name="username"></label>
+          <label>Password: <input type="password" name="password"></label>
+          <button type="submit">Registra</button>
+          <button type="button" id="cancelRegister">Annulla</button>
+        </form>
+      </div>
+      <div class="supplier-controls hidden" id="loggedControls">
+        <span>Connesso come <span id="loggedName"></span></span>
+        <button id="logoutBtn" class="small">Logout</button>
+      </div>
+      <div class="supplier-controls" id="chooseSupplierControls">
         <select id="supplierSelect"><option value="">-- seleziona fornitore --</option></select>
         <button id="newSupplierBtn">Registra nuovo fornitore</button>
       </div>
