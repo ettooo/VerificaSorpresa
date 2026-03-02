@@ -42,7 +42,7 @@
   async function callEndpoint(ep){
     try{
       const start = performance.now();
-      const res = await fetch(ep, {cache: 'no-store'});
+      const res = await fetch(ep, {cache: 'no-store', headers:{'Accept':'application/json'}});
       const ms = Math.round(performance.now() - start);
       setMeta(res.status + ' ' + res.statusText, ms);
       const ct = res.headers.get('content-type') || '';
