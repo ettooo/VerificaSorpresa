@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>VerificaSorpresa - UI</title>
+  <!-- Google Font -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/ui/style.css">
+</head>
+<body>
+  <header>
+    <h1>VerificaSorpresa</h1>
+    <nav class="tabs">
+      <button data-tab="query" class="active">Query</button>
+      <button data-tab="supplier">Fornitore</button>
+      <button data-tab="admin">Admin</button>
+    </nav>
+  </header>
+
+  <main>
+    <!-- query viewer -->
+    <section id="querySection">
+      <div class="controls">
+        <div class="preset-buttons">
+          <button data-endpoint="/q1">/q1</button>
+          <button data-endpoint="/q2">/q2</button>
+          <button data-endpoint="/q3">/q3</button>
+        </div>
+        <div class="custom">
+          <input id="endpointInput" type="text" placeholder="Inserisci endpoint (es. /q1)" value="/q1">
+          <button id="callBtn">Chiedi</button>
+          <label><input id="autoRefresh" type="checkbox"> Aggiorna ogni 5s</label>
+        </div>
+      </div>
+      <section class="result">
+        <h2>Risultato</h2>
+        <div class="meta">
+          <span id="status">---</span>
+          <span id="time">---</span>
+        </div>
+        <div id="output">Premi un pulsante per chiamare un endpoint.</div>
+      </section>
+    </section>
+
+    <!-- supplier manager -->
+    <section id="supplierSection" class="hidden">
+      <h2>Gestione Fornitore</h2>
+      <div class="supplier-controls">
+        <select id="supplierSelect"><option value="">-- seleziona fornitore --</option></select>
+        <button id="newSupplierBtn">Registra nuovo fornitore</button>
+      </div>
+      <div id="supplierCatalog">
+        <!-- catalog table will go here -->
+        <button id="addCatalogItemBtn" class="hidden">Aggiungi pezzo</button>
+        <div class="pagination">
+          <button id="prevPageSup" disabled>«</button>
+          <span id="pageInfoSup"></span>
+          <button id="nextPageSup" disabled>»</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- admin dashboard -->
+    <section id="adminSection" class="hidden">
+      <h2>Dashboard Amministratori</h2>
+      <div class="admin-tab-controls">
+        <button data-admintab="suppliers" class="active">Fornitori</button>
+        <button data-admintab="pieces">Pezzi</button>
+      </div>
+      <div id="adminContent">
+        <!-- dynamic admin content -->
+      </div>
+      <div class="pagination">
+        <button id="prevPageAdmin" disabled>«</button>
+        <span id="pageInfoAdmin"></span>
+        <button id="nextPageAdmin" disabled>»</button>
+      </div>
+    </section>
+  </main>
+
+  <!-- dialogs -->
+  <dialog id="detailDialog"></dialog>
+  <dialog id="formDialog"></dialog>
+
+  <script src="/ui/app.js"></script>
+</body>
+</html>
