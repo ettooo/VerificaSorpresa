@@ -16,6 +16,21 @@ return function (App $app) {
         return $json($response, ["ok" => true]);
     });
 
+    // Piece Routes
+    $app->group('/pieces', function (\Slim\Interfaces\RouteCollectorProxyInterface $group) {
+        $group->get('', \App\Application\Actions\Piece\ListPiecesAction::class);
+        $group->post('', \App\Application\Actions\Piece\CreatePieceAction::class);
+        $group->get('/{id}', \App\Application\Actions\Piece\ViewPieceAction::class);
+        $group->put('/{id}', \App\Application\Actions\Piece\UpdatePieceAction::class);
+        $group->delete('/{id}', \App\Application\Actions\Piece\DeletePieceAction::class);
+    });
+
+    // Supplier Routes
+    $app->group('/suppliers', function (\Slim\Interfaces\RouteCollectorProxyInterface $group) {
+        $group->get('', \App\Application\Actions\Supplier\ListSuppliersAction::class);
+        $group->post('/catalog', \App\Application\Actions\Supplier\UpdateCatalogAction::class);
+    });
+
     // Q1
     $app->get('/q1', function ($request, $response) use ($json) {
         $pdo = $this->get(\PDO::class);
