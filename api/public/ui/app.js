@@ -156,7 +156,9 @@
     loggedOutState();
   });
 
-  function loggedInState(){
+  async function loggedInState(){
+    // re-read session from server to ensure cookie registered
+    await checkSession();
     authBlock.classList.add('hidden');
     regBlock.classList.add('hidden');
     loggedControls.classList.remove('hidden');
@@ -221,8 +223,10 @@
     if(sessionSupplier){
       supplierSelect.value = sessionSupplier.fid;
       supplierSelect.disabled = true;
+      document.getElementById('chooseSupplierControls').classList.add('hidden');
     } else {
       supplierSelect.disabled = false;
+      document.getElementById('chooseSupplierControls').classList.remove('hidden');
     }
     // pagination not implemented for supplier list in UI yet
   }
@@ -247,7 +251,12 @@
 
   async function renderSupplierCatalog(){
     if (!currentSupplier){ supplierCatalog.innerHTML=''; addCatalogItemBtn.classList.add('hidden'); return; }
-    addCatalogItemBtn.classList.remove('hidden');
+    // only show add button if logged in as this supplier
+    if(sessionSupplier && sessionSupplier.fid === currentSupplier){
+      addCatalogItemBtn.classList.remove('hidden');
+    } else {
+      addCatalogItemBtn.classList.add('hidden');
+    }
     const res = await fetch(`/suppliers/${currentSupplier}/catalog?page=${supPage}&per_page=${supPer}`,{credentials:'include'});
     const json = await res.json();
     const table = document.createElement('table');
