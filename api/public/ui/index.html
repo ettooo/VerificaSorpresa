@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>VerificaSorpresa - Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/ui/style.css">
+</head>
+<body>
+  <header>
+    <div class="header-content">
+      <h1>✨ VerificaSorpresa</h1>
+      <nav class="tabs">
+        <button data-tab="dashboard" class="active">Dashboard</button>
+        <button data-tab="query">Query</button>
+        <button data-tab="supplier">Fornitore</button>
+        <button data-tab="admin">Admin</button>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <!-- DASHBOARD section -->
+    <section id="dashboardSection" class="main-content">
+      <div class="dashboard-header">
+        <h2>Benvenuto su VerificaSorpresa</h2>
+        <p class="subtitle">Gestione intelligente di catalogo e fornitori</p>
+      </div>
+      
+      <div class="dashboard-grid">
+        <div class="dashboard-card gradient-blue clickable-card" data-endpoint="/q11">
+          <div class="card-icon">📦</div>
+          <h3>Tutti i Prodotti</h3>
+          <p>Visualizza il catalogo completo dei pezzi disponibili</p>
+        </div>
+        
+        <div class="dashboard-card gradient-purple clickable-card" data-endpoint="/q1">
+          <div class="card-icon">📋</div>
+          <h3>Q1: Pezzi Disponibili</h3>
+          <p>Elenco di tutti i pezzi presenti nel catalogo</p>
+        </div>
+        <div class="dashboard-card gradient-green clickable-card" data-endpoint="/q2">
+          <div class="card-icon">👥</div>
+          <h3>Q2: Catalogo Completo</h3>
+          <p>Fornitori che offrono tutti i pezzi</p>
+        </div>
+        <div class="dashboard-card gradient-orange clickable-card" data-endpoint="/q3">
+          <div class="card-icon">🎨</div>
+          <h3>Q3: Per Colore</h3>
+          <p>Fornitori di un colore specifico</p>
+        </div>
+        <div class="dashboard-card gradient-pink clickable-card" data-endpoint="/q4">
+          <div class="card-icon">⭐</div>
+          <h3>Q4: Esclusivi</h3>
+          <p>Pezzi da un solo fornitore</p>
+        </div>
+        <div class="dashboard-card gradient-cyan clickable-card" data-endpoint="/q5">
+          <div class="card-icon">💰</div>
+          <h3>Q5: Prezzi Alti</h3>
+          <p>Fornitori con prezzi sopra media</p>
+        </div>
+        <div class="dashboard-card gradient-red clickable-card" data-endpoint="/q6">
+          <div class="card-icon">🔝</div>
+          <h3>Q6: Prezzi Massimi</h3>
+          <p>Costi più elevati per pezzo</p>
+        </div>
+        <div class="dashboard-card gradient-indigo clickable-card" data-endpoint="/q7">
+          <div class="card-icon">🔴</div>
+          <h3>Q7: Solo Rossi</h3>
+          <p>Fornitori con soli pezzi rossi</p>
+        </div>
+        <div class="dashboard-card gradient-teal clickable-card" data-endpoint="/q8">
+          <div class="card-icon">🎭</div>
+          <h3>Q8: Rosa+Verde</h3>
+          <p>Fornitori con entrambi i colori</p>
+        </div>
+        <div class="dashboard-card gradient-yellow clickable-card" data-endpoint="/q9">
+          <div class="card-icon">🌈</div>
+          <h3>Q9: Colorati</h3>
+          <p>Con pezzi rossi o verdi</p>
+        </div>
+        <div class="dashboard-card gradient-lime clickable-card" data-endpoint="/q10">
+          <div class="card-icon">🔗</div>
+          <h3>Q10: Multi-Fornitori</h3>
+          <p>Pezzi da 2+ fornitori</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- QUERY section -->
+    <section id="querySection" class="main-content hidden">
+      <h2>Esplora le Query</h2>
+      <div class="controls">
+        <div class="preset-buttons">
+          <button data-endpoint="/q1" class="btn-query">Q1</button>
+          <button data-endpoint="/q2" class="btn-query">Q2</button>
+          <button data-endpoint="/q3" class="btn-query">Q3</button>
+          <button data-endpoint="/q11" class="btn-query">Tutti</button>
+        </div>
+        <div class="custom">
+          <input id="endpointInput" type="text" placeholder="Inserisci endpoint (es. /q1)" value="/q1">
+          <button id="callBtn">Esegui</button>
+          <label><input id="autoRefresh" type="checkbox"> Auto-refresh (5s)</label>
+        </div>
+      </div>
+      <section class="result">
+        <div class="result-header">
+          <h3>Risultato Query</h3>
+          <div class="meta">
+            <span id="status">---</span>
+            <span id="time">---</span>
+          </div>
+        </div>
+        <div id="output">Esegui una query per visualizzare i risultati.</div>
+      </section>
+    </section>
+
+    <!-- SUPPLIER section -->
+    <section id="supplierSection" class="main-content hidden">
+      <h2>Gestione Fornitore</h2>
+      <div id="authBlock" class="auth-container">
+        <div class="auth-card">
+          <h3>Login</h3>
+          <form id="loginForm" class="dialog-form">
+            <label>Username: <input name="username" required></label>
+            <label>Password: <input type="password" name="password" required></label>
+            <button type="submit" class="btn-primary">Login</button>
+          </form>
+          <p>Nuovo fornitore? <button id="showRegisterBtn" class="btn-link">Registrati</button></p>
+        </div>
+        <div class="auth-card">
+          <h3>Registrazione Rapida</h3>
+          <form id="registerForm" class="dialog-form hidden" style="display:none;">
+            <label>Nome fornitore: <input name="fnome" required></label>
+            <label>Indirizzo: <input name="indirizzo" required></label>
+            <label>Username: <input name="username" required></label>
+            <label>Password: <input type="password" name="password" required></label>
+            <button type="submit" class="btn-primary">Registra</button>
+            <button type="button" id="cancelRegister" class="btn-secondary">Annulla</button>
+          </form>
+        </div>
+      </div>
+      <div class="supplier-logged hidden" id="loggedControls">
+        <div class="logged-header">
+          <span>👤 Connesso come <strong id="loggedName"></strong></span>
+          <button id="logoutBtn" class="btn-secondary">Logout</button>
+        </div>
+      </div>
+      <div class="supplier-controls" id="chooseSupplierControls">
+        <label>Seleziona Fornitore:
+          <select id="supplierSelect"><option value="">-- seleziona fornitore --</option></select>
+        </label>
+      </div>
+      <div id="supplierCatalog"></div>
+      <dialog id="detailDialog" class="modal-dialog"></dialog>
+      <dialog id="formDialog" class="modal-dialog"></dialog>
+    </section>
+
+    <!-- ADMIN section -->
+    <section id="adminSection" class="main-content hidden">
+      <h2>Dashboard Amministratori</h2>
+      <div class="admin-tabs">
+        <button data-admintab="suppliers" class="active">Fornitori</button>
+        <button data-admintab="pieces">Pezzi</button>
+      </div>
+      <div id="adminContent"></div>
+      <div class="pagination">
+        <button id="prevPageAdmin" disabled>«</button>
+        <span id="pageInfoAdmin"></span>
+        <button id="nextPageAdmin" disabled>»</button>
+      </div>
+    </section>
+  </main>
+
+  <script src="/ui/app.js"></script>
+</body>
+</html>

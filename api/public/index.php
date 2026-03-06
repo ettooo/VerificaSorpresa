@@ -12,6 +12,43 @@ use Slim\Factory\ServerRequestCreatorFactory;
 
 require __DIR__ . '/../vendor/autoload.php';
 
+// Serve UI files and redirect browser requests for /qX to the interface
+$uri = $_SERVER['REQUEST_URI'] ?? '/';
+$path = parse_url($uri, PHP_URL_PATH);
+
+// redirect q endpoints to UI when not expecting JSON (i.e. normal browser navigation)
+$accept = $_SERVER['HTTP_ACCEPT'] ?? '';
+if (preg_match('#^/q[0-9]+#', $path)) {
+    $wantsJson = strpos($accept, 'application/json') !== false;
+    $isAjax = (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) &&
+               strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest');
+    if (! $wantsJson && ! $isAjax) {
+        header('Location: /?ep=' . urlencode($path));
+        exit;
+    }
+}
+
+// static file serving
+if ($path === '/' || strpos($path, '/ui') === 0) {
+    if ($path === '/') {
+        $path = '/ui/index.html';
+    }
+    $file = realpath(__DIR__ . $path);
+    $uiBase = realpath(__DIR__ . '/ui');
+    if ($file && strpos($file, $uiBase) === 0) {
+        if (is_dir($file)) {
+            $file = rtrim($file, '/') . '/index.html';
+        }
+        if (file_exists($file) && is_file($file)) {
+            $mime = mime_content_type($file) ?: 'text/html';
+            header('Content-Type: ' . $mime);
+            header('Content-Length: ' . filesize($file));
+            readfile($file);
+            exit;
+        }
+    }
+}
+
 // Instantiate PHP-DI ContainerBuilder
 $containerBuilder = new ContainerBuilder();
 

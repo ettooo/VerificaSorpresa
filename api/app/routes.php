@@ -197,4 +197,242 @@ $app->get('/q11', function ($request, $response) use ($json) {
     return $json($response, $stmt->fetchAll());
 });
 
+    // generic pagination helper
+    $paginate = function($pdo, $baseQuery, $params, $page, $perPage) {
+        // count total rows
+        $countStmt = $pdo->prepare("SELECT COUNT(*) FROM (" . $baseQuery . ")");
+        $countStmt->execute($params);
+        $total = (int) $countStmt->fetchColumn();
+        $offset = ($page - 1) * $perPage;
+        $stmt = $pdo->prepare($baseQuery . " LIMIT :lim OFFSET :off");
+        // bind params by position or name
+        foreach ($params as $k => $v) {
+            if (is_int($k)) {
+                $stmt->bindValue($k+1, $v);
+            } else {
+                $stmt->bindValue(":$k", $v);
+            }
+        }
+        $stmt->bindValue(':lim', $perPage, \PDO::PARAM_INT);
+        $stmt->bindValue(':off', $offset, \PDO::PARAM_INT);
+        $stmt->execute();
+        return ['data' => $stmt->fetchAll(), 'page' => $page, 'per_page' => $perPage, 'total' => $total];
+    };
+
+    // authentication routes
+    $app->post('/register', function($request,$response) use($json){
+        $pdo = $this->get(\PDO::class);
+        $body = $request->getParsedBody();
+        $fnome = $body['fnome'] ?? '';
+        $indirizzo = $body['indirizzo'] ?? '';
+        $username = $body['username'] ?? '';
+        $password = $body['password'] ?? '';
+        if (!$fnome || !$indirizzo || !$username || !$password) {
+            return $response->withStatus(400)->write(json_encode(['error'=>'missing fields']));
+        }
+        $fid = 'F' . time();
+        $passhash = password_hash($password, PASSWORD_DEFAULT);
+        $stmt = $pdo->prepare("INSERT INTO Fornitori(fid,fnome,indirizzo,username,password) VALUES(:fid,:fnome,:indirizzo,:username,:password)");
+        $stmt->execute(['fid'=>$fid,'fnome'=>$fnome,'indirizzo'=>$indirizzo,'username'=>$username,'password'=>$passhash]);
+        // auto login
+        session_start();
+        $_SESSION['fid'] = $fid;
+        return $json($response, ['fid'=>$fid,'fnome'=>$fnome,'indirizzo'=>$indirizzo]);
+    });
+    $app->post('/login', function($request,$response) use($json){
+        $pdo = $this->get(\PDO::class);
+        $body = $request->getParsedBody();
+        $user = $body['username'] ?? '';
+        $pass = $body['password'] ?? '';
+        $stmt = $pdo->prepare("SELECT fid,fnome,password FROM Fornitori WHERE username=:user");
+        $stmt->execute(['user'=>$user]);
+        $row = $stmt->fetch();
+        if (!$row || !password_verify($pass, $row['password'])) {
+            return $response->withStatus(401)->write(json_encode(['error'=>'invalid']));
+        }
+        session_start();
+        $_SESSION['fid'] = $row['fid'];
+        return $json($response, ['fid'=>$row['fid'],'fnome'=>$row['fnome']]);
+    });
+    $app->post('/logout', function($request,$response) {
+        session_start();
+        session_destroy();
+        return $response->withStatus(204);
+    });
+    $app->get('/me', function($request,$response) use($json){
+        session_start();
+        if(empty($_SESSION['fid'])){
+            return $response->withStatus(401);
+        }
+        $fid = $_SESSION['fid'];
+        $pdo = $this->get(\PDO::class);
+        $stmt = $pdo->prepare("SELECT fid,fnome,indirizzo FROM Fornitori WHERE fid=:fid");
+        $stmt->execute(['fid'=>$fid]);
+        $row = $stmt->fetch();
+        if (!$row) return $response->withStatus(401);
+        return $json($response,$row);
+    });
+
+    // suppliers CRUD & pagination
+    $app->get('/suppliers', function ($request, $response) use ($json, $paginate) {
+        $pdo = $this->get(\PDO::class);
+        $page = max(1, (int)($request->getQueryParams()['page'] ?? 1));
+        $per = max(1, min(50, (int)($request->getQueryParams()['per_page'] ?? 10)));
+        $base = "SELECT fid, fnome, indirizzo FROM Fornitori ORDER BY fnome";
+        $result = $paginate($pdo, $base, [], $page, $per);
+        return $json($response, $result);
+    });
+    $app->get('/suppliers/{fid}', function ($request, $response, $args) use ($json) {
+        $pdo = $this->get(\PDO::class);
+        $stmt = $pdo->prepare("SELECT fid,fnome,indirizzo FROM Fornitori WHERE fid=:fid");
+        $stmt->execute(['fid'=>$args['fid']]);
+        $row = $stmt->fetch();
+        if (!$row) return $response->withStatus(404);
+        return $json($response, $row);
+    });
+    $app->post('/suppliers', function ($request, $response) use ($json) {
+        // admin endpoint for creating supplier (may include username/password)
+        $pdo = $this->get(\PDO::class);
+        $body = $request->getParsedBody();
+        $fnome = $body['fnome'] ?? '';
+        $indirizzo = $body['indirizzo'] ?? '';
+        if ($fnome === '' || $indirizzo === '') {
+            return $response->withStatus(400)->withHeader('Content-Type','application/json')
+                ->write(json_encode(['error'=>'missing fields']));
+        }
+        $fid = 'F' . time();
+        $stmt = $pdo->prepare("INSERT INTO Fornitori(fid,fnome,indirizzo,username,password) VALUES(:fid,:fnome,:indirizzo,:username,:password)");
+        $passhash = null;
+        if (!empty($body['password'])) {
+            $passhash = password_hash($body['password'], PASSWORD_DEFAULT);
+        }
+        $stmt->execute([
+            'fid'=>$fid,
+            'fnome'=>$fnome,
+            'indirizzo'=>$indirizzo,
+            'username'=> $body['username'] ?? null,
+            'password'=> $passhash,
+        ]);
+        return $json($response, ['fid'=>$fid,'fnome'=>$fnome,'indirizzo'=>$indirizzo]);
+    });
+    $app->put('/suppliers/{fid}', function ($request, $response, $args) use ($json) {
+        session_start();
+        if (empty($_SESSION['fid']) || $_SESSION['fid'] !== $args['fid']) {
+            return $response->withStatus(403);
+        }
+        $pdo = $this->get(\PDO::class);
+        $body = $request->getParsedBody();
+        $stmt = $pdo->prepare("UPDATE Fornitori SET fnome=:fnome, indirizzo=:indirizzo WHERE fid=:fid");
+        $stmt->execute(['fnome'=>$body['fnome'],'indirizzo'=>$body['indirizzo'],'fid'=>$args['fid']]);
+        return $json($response, ['updated'=>true]);
+    });
+    $app->delete('/suppliers/{fid}', function ($request, $response, $args) use ($json) {
+        session_start();
+        if (empty($_SESSION['fid']) || $_SESSION['fid'] !== $args['fid']) {
+            return $response->withStatus(403);
+        }
+        $pdo = $this->get(\PDO::class);
+        $stmt = $pdo->prepare("DELETE FROM Fornitori WHERE fid=:fid");
+        $stmt->execute(['fid'=>$args['fid']]);
+        return $json($response, ['deleted'=>true]);
+    });
+
+    // supplier catalog management
+    $app->get('/suppliers/{fid}/catalog', function ($request, $response, $args) use ($json, $paginate) {
+        $pdo = $this->get(\PDO::class);
+        $fid = $args['fid'];
+        $page = max(1, (int)($request->getQueryParams()['page'] ?? 1));
+        $per = max(1, min(50, (int)($request->getQueryParams()['per_page'] ?? 10)));
+        $base = "SELECT c.pid, p.pnome, p.colore, c.costo
+                 FROM Catalogo c
+                 JOIN Pezzi p ON p.pid = c.pid
+                 WHERE c.fid = :fid
+                 ORDER BY p.pnome";
+        $result = $paginate($pdo, $base, ['fid'=>$fid], $page, $per);
+        return $json($response, $result);
+    });
+    $app->get('/suppliers/{fid}/catalog/{pid}', function ($request, $response, $args) use ($json) {
+        $pdo = $this->get(\PDO::class);
+        $stmt = $pdo->prepare("SELECT c.*, p.pnome, p.colore FROM Catalogo c JOIN Pezzi p ON p.pid=c.pid WHERE c.fid=:fid AND c.pid=:pid");
+        $stmt->execute(['fid'=>$args['fid'],'pid'=>$args['pid']]);
+        $row = $stmt->fetch();
+        if (!$row) return $response->withStatus(404);
+        return $json($response, $row);
+    });
+    $app->post('/suppliers/{fid}/catalog', function ($request, $response, $args) use ($json) {
+        session_start();
+        $fid = $args['fid'];
+        if (empty($_SESSION['fid']) || $_SESSION['fid'] !== $fid) {
+            return $response->withStatus(403);
+        }
+        $pdo = $this->get(\PDO::class);
+        $body = $request->getParsedBody();
+        $pid = $body['pid'] ?? null;
+        $pnome = $body['pnome'] ?? null;
+        $colore = $body['colore'] ?? null;
+        $costo = isset($body['costo']) ? (float)$body['costo'] : null;
+        if (!$pid || $costo === null) {
+            return $response->withStatus(400)->write(json_encode(['error'=>'pid and costo required']));
+        }
+        $stmt = $pdo->prepare("SELECT COUNT(*) FROM Pezzi WHERE pid=:pid");
+        $stmt->execute(['pid'=>$pid]);
+        if ($stmt->fetchColumn() == 0) {
+            $stmt = $pdo->prepare("INSERT INTO Pezzi(pid,pnome,colore) VALUES(:pid,:pnome,:colore)");
+            $stmt->execute(['pid'=>$pid,'pnome'=>$pnome,'colore'=>$colore]);
+        } elseif ($pnome || $colore) {
+            $update = [];
+            $params = ['pid'=>$pid];
+            if ($pnome) { $update[] = "pnome=:pnome"; $params['pnome']=$pnome; }
+            if ($colore) { $update[] = "colore=:colore"; $params['colore']=$colore; }
+            if ($update) {
+                $pdo->prepare("UPDATE Pezzi SET " . implode(',', $update) . " WHERE pid=:pid")->execute($params);
+            }
+        }
+        $pdo->prepare("REPLACE INTO Catalogo(fid,pid,costo) VALUES(:fid,:pid,:costo)")
+            ->execute(['fid'=>$fid,'pid'=>$pid,'costo'=>$costo]);
+        return $json($response, ['ok'=>true]);
+    });
+    $app->put('/suppliers/{fid}/catalog/{pid}', function ($request, $response, $args) use ($json) {
+        session_start();
+        $fid = $args['fid'];
+        if (empty($_SESSION['fid']) || $_SESSION['fid'] !== $fid) {
+            return $response->withStatus(403);
+        }
+        $pdo = $this->get(\PDO::class);
+        $pid = $args['pid'];
+        $body = $request->getParsedBody();
+        if (isset($body['costo'])) {
+            $pdo->prepare("UPDATE Catalogo SET costo=:costo WHERE fid=:fid AND pid=:pid")
+                ->execute(['costo'=>$body['costo'],'fid'=>$fid,'pid'=>$pid]);
+        }
+        if (isset($body['pnome']) || isset($body['colore'])) {
+            $update=[];$params=['pid'=>$pid];
+            if(isset($body['pnome'])){ $update[]='pnome=:pnome'; $params['pnome']=$body['pnome']; }
+            if(isset($body['colore'])){ $update[]='colore=:colore'; $params['colore']=$body['colore']; }
+            if($update){ $pdo->prepare("UPDATE Pezzi SET " . implode(',', $update) . " WHERE pid=:pid")->execute($params); }
+        }
+        return $json($response, ['ok'=>true]);
+    });
+    $app->delete('/suppliers/{fid}/catalog/{pid}', function ($request, $response, $args) use ($json) {
+        session_start();
+        $fid = $args['fid'];
+        if (empty($_SESSION['fid']) || $_SESSION['fid'] !== $fid) {
+            return $response->withStatus(403);
+        }
+        $pdo = $this->get(\PDO::class);
+        $pdo->prepare("DELETE FROM Catalogo WHERE fid=:fid AND pid=:pid")
+            ->execute(['fid'=>$args['fid'],'pid'=>$args['pid']]);
+        return $json($response, ['ok'=>true]);
+    });
+
+    // pieces list for admin
+    $app->get('/pieces', function ($request, $response) use ($json, $paginate) {
+        $pdo = $this->get(\PDO::class);
+        $page = max(1, (int)($request->getQueryParams()['page'] ?? 1));
+        $per = max(1, min(50, (int)($request->getQueryParams()['per_page'] ?? 10)));
+        $base = "SELECT pid,pnome,colore FROM Pezzi ORDER BY pnome";
+        $result = $paginate($pdo, $base, [], $page, $per);
+        return $json($response, $result);
+    });
+
 };
